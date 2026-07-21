@@ -1,0 +1,1615 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kath's Schedule</title>
+<link rel="icon" type="image/svg+xml" href="logo.svg">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Kath's Schedule">
+<meta name="theme-color" content="#c96442">
+<style>
+  :root{
+    --bg:#f7f7f5;
+    --card:#ffffff;
+    --ink:#1f1f1f;
+    --sub:#6b6b6b;
+    --line:#e7e5e0;
+    --accent:#c96442;
+    --accent-bg:#faf0ec;
+    --today:#fff8e6;
+    --today-border:#e8c468;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Microsoft JhengHei",sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    padding:24px 16px 80px;
+  }
+  h1{
+    text-align:center;
+    font-size:1.5rem;
+    font-weight:700;
+    margin:0 0 4px;
+  }
+  .subtitle{
+    text-align:center;
+    color:var(--sub);
+    font-size:0.9rem;
+    margin-bottom:20px;
+  }
+  .controls{
+    max-width:900px;
+    margin:0 auto 20px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .month-select{
+    padding:8px 14px;
+    border-radius:20px;
+    border:1px solid var(--line);
+    background:var(--card);
+    color:var(--ink);
+    font-size:0.95rem;
+    font-family:inherit;
+    cursor:pointer;
+  }
+  .view-toggle{
+    display:flex;
+    border:1px solid var(--line);
+    border-radius:20px;
+    overflow:hidden;
+  }
+  .view-btn{
+    padding:8px 16px;
+    border:none;
+    background:var(--card);
+    color:var(--ink);
+    font-size:0.9rem;
+    cursor:pointer;
+  }
+  .view-btn.active{
+    background:var(--accent);
+    color:#fff;
+  }
+  .month-wrap{
+    display:none;
+    max-width:1100px;
+    margin:0 auto;
+  }
+  .month-wrap.active{
+    display:block;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(240px,1fr));
+    gap:14px;
+  }
+  .cal-table-wrap{
+    overflow-x:auto;
+  }
+  .cal-table{
+    width:100%;
+    min-width:900px;
+    border-collapse:collapse;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    overflow:hidden;
+  }
+  .cal-table th{
+    background:var(--accent-bg);
+    color:var(--ink);
+    font-size:0.9rem;
+    font-weight:700;
+    padding:10px 8px;
+    border-bottom:1px solid var(--line);
+    border-right:1px solid var(--line);
+  }
+  .cal-table th:last-child{ border-right:none; }
+  .cal-table td{
+    vertical-align:top;
+    padding:8px;
+    border-right:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+  }
+  .cal-table td:last-child{ border-right:none; }
+  .cal-table tr:last-child td{ border-bottom:none; }
+
+  .cal-grid{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:4px;
+  }
+  .cal-head{
+    text-align:center;
+    font-size:0.75rem;
+    font-weight:700;
+    color:var(--sub);
+    padding:4px 0 6px;
+  }
+  .cal-head.weekend{ color:var(--accent); }
+  .cal-cell{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:8px;
+    aspect-ratio:0.8;
+    padding:4px;
+    box-sizing:border-box;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    cursor:pointer;
+  }
+  .cal-cell:active{
+    box-shadow:0 0 0 2px var(--accent) inset;
+  }
+  .cal-cell.empty{
+    background:transparent;
+    border:none;
+    cursor:default;
+  }
+  .cal-cell.weekend{ background:var(--accent-bg); }
+  .cal-cell.holiday{ background:#fdeceb; border-color:#e8b3ac; }
+  .cal-cell.observance{ background:#fdf0e3; border-color:#eec98f; }
+  .cal-cell.is-today{ outline:2px solid var(--accent); outline-offset:-2px; }
+  .cal-cell.selected-date{
+    background:var(--accent-bg);
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--accent) inset;
+  }
+  .cal-cell.selected-date .cal-date,
+  .cal-cell.selected-date .cal-day-label{ color:var(--accent); }
+  .cal-cell.is-today.selected-date{ outline:none; }
+  .cal-date{
+    font-size:0.75rem;
+    font-weight:700;
+    color:var(--ink);
+    margin-bottom:2px;
+    flex:0 0 auto;
+  }
+  .cal-cell.holiday .cal-date{ color:#c0392b; }
+  .cal-cell.observance .cal-date{ color:#b5741f; }
+  .cal-day-label{
+    font-size:0.6rem;
+    color:var(--accent);
+    font-weight:600;
+    margin-bottom:2px;
+    flex:0 0 auto;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .cal-cell.holiday .cal-day-label{ color:#c0392b; }
+  .cal-cell.observance .cal-day-label{ color:#b5741f; }
+  .cal-slot-line{
+    font-size:0.62rem;
+    color:var(--ink);
+    line-height:1.3;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    flex:0 0 auto;
+  }
+  .cal-slot-more{
+    font-size:0.6rem;
+    color:var(--sub);
+    flex:0 0 auto;
+  }
+  .cal-slot-line.status-leave{ color:#999; text-decoration:line-through; }
+  .cal-slot-line.status-reschedule{ color:var(--accent); font-weight:600; }
+  .cal-slot-line.status-other{ color:#7a5ea8; font-style:italic; }
+  @media (max-width:640px){
+    .cal-grid{ gap:3px; }
+    .cal-cell{ aspect-ratio:0.62; border-radius:6px; padding:3px; }
+    .cal-date{ font-size:0.68rem; }
+    .cal-day-label, .cal-slot-line, .cal-slot-more{ font-size:0.52rem; }
+  }
+  .cal-panel{
+    max-width:600px;
+    margin:18px auto 0;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px 16px 16px;
+  }
+  .cal-panel-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:10px;
+    padding-bottom:8px;
+    border-bottom:1px solid var(--line);
+  }
+  .cal-panel-title{
+    font-weight:700;
+    font-size:1.02rem;
+  }
+  .cal-panel-holiday{
+    color:var(--accent);
+    font-weight:600;
+  }
+  .cal-panel-close{
+    border:none;
+    background:none;
+    color:var(--sub);
+    font-size:1.1rem;
+    cursor:pointer;
+    line-height:1;
+    padding:2px 6px;
+  }
+  .cal-panel-close:hover{ color:var(--accent); }
+  .cal-panel-hint{
+    font-size:0.78rem;
+    color:var(--sub);
+    margin-bottom:8px;
+  }
+  .cal-alert{
+    background:#fff4e5;
+    border:1px solid #eec98f;
+    color:#8a5a12;
+    border-radius:8px;
+    padding:8px 10px;
+    font-size:0.8rem;
+    margin-bottom:10px;
+  }
+  .cal-legend{
+    display:flex;
+    justify-content:center;
+    gap:16px;
+    flex-wrap:wrap;
+    margin:14px 0 4px;
+    font-size:0.78rem;
+    color:var(--sub);
+  }
+  .cal-legend span{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+  }
+  .cal-legend i{
+    width:11px;
+    height:11px;
+    border-radius:3px;
+    display:inline-block;
+  }
+  .cal-legend .sw-holiday{ background:#fdeceb; border:1px solid #e8b3ac; }
+  .cal-legend .sw-observance{ background:#fdf0e3; border:1px solid #eec98f; }
+  .cal-legend .sw-weekend{ background:var(--accent-bg); border:1px solid var(--line); }
+  .day-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px 16px 16px;
+    box-shadow:0 1px 2px rgba(0,0,0,0.03);
+  }
+  .day-card.today{
+    background:var(--today);
+    border-color:var(--today-border);
+  }
+  .day-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:10px;
+    padding-bottom:8px;
+    border-bottom:1px solid var(--line);
+  }
+  .day-title{
+    font-weight:700;
+    font-size:1.05rem;
+  }
+  .day-date{
+    font-size:0.8rem;
+    color:var(--sub);
+  }
+  .slot{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    margin-bottom:8px;
+    padding:6px 8px;
+    border-radius:8px;
+    background:var(--accent-bg);
+    flex-wrap:wrap;
+  }
+  .slot .time{
+    flex:0 0 auto;
+    font-weight:600;
+    font-size:16px;
+    min-width:98px;
+    outline:none;
+    border:none;
+    background:transparent;
+    color:var(--accent);
+    font-family:inherit;
+    padding:2px 4px;
+    border-radius:4px;
+  }
+  .slot .time:focus{
+    background:#fff;
+    box-shadow:0 0 0 2px var(--accent);
+  }
+  .slot .time::-webkit-calendar-picker-indicator{
+    filter:invert(46%) sepia(53%) saturate(638%) hue-rotate(335deg) brightness(93%) contrast(89%);
+    cursor:pointer;
+  }
+  .slot .name{
+    flex:1;
+    min-width:90px;
+    outline:none;
+    border:none;
+    background:transparent;
+    font-size:16px;
+    color:var(--ink);
+    font-family:inherit;
+    padding:2px 4px;
+    border-radius:4px;
+    cursor:pointer;
+  }
+  .slot .name:focus{
+    background:#fff;
+    box-shadow:0 0 0 2px var(--accent);
+  }
+  .slot .status{
+    flex:0 0 auto;
+    min-width:72px;
+    outline:none;
+    border:none;
+    background:transparent;
+    font-size:16px;
+    color:var(--ink);
+    font-family:inherit;
+    padding:2px 4px;
+    border-radius:4px;
+    cursor:pointer;
+  }
+  .slot .status:focus{
+    background:#fff;
+    box-shadow:0 0 0 2px var(--accent);
+  }
+  .slot .del-btn{
+    flex:0 0 auto;
+    border:none;
+    background:none;
+    color:#bbb;
+    cursor:pointer;
+    font-size:1rem;
+    line-height:1;
+    padding:2px 4px;
+    min-width:24px;
+    text-align:center;
+  }
+  .slot .del-btn:hover{
+    color:#c0392b;
+  }
+  .slot .resched-date{
+    flex:0 0 auto;
+    font-size:16px;
+    min-width:120px;
+    outline:none;
+    border:none;
+    background:transparent;
+    color:var(--accent);
+    font-family:inherit;
+    padding:2px 4px;
+    border-radius:4px;
+  }
+  .slot .resched-date:focus{
+    background:#fff;
+    box-shadow:0 0 0 2px var(--accent);
+  }
+  .slot .resched-date::-webkit-calendar-picker-indicator{
+    filter:invert(46%) sepia(53%) saturate(638%) hue-rotate(335deg) brightness(93%) contrast(89%);
+    cursor:pointer;
+  }
+  .add-slot-btn{
+    width:100%;
+    padding:6px;
+    border:1px dashed var(--line);
+    border-radius:8px;
+    background:transparent;
+    color:var(--sub);
+    font-size:0.85rem;
+    cursor:pointer;
+    margin-top:4px;
+  }
+  .add-slot-btn:hover{
+    background:var(--accent-bg);
+    color:var(--accent);
+    border-color:var(--accent);
+  }
+  .empty-hint{
+    color:#bbb;
+    font-size:0.85rem;
+    padding:6px 0;
+  }
+  .toolbar{
+    max-width:1100px;
+    margin:0 auto 16px;
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+  }
+  .tool-btn{
+    padding:7px 14px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--card);
+    color:var(--ink);
+    font-size:0.85rem;
+    cursor:pointer;
+  }
+  .tool-btn:hover{
+    border-color:var(--accent);
+    color:var(--accent);
+  }
+  .toast{
+    position:fixed;
+    bottom:24px;
+    left:50%;
+    transform:translateX(-50%) translateY(20px);
+    background:var(--ink);
+    color:#fff;
+    padding:8px 18px;
+    border-radius:20px;
+    font-size:0.85rem;
+    opacity:0;
+    pointer-events:none;
+    transition:all .25s;
+  }
+  .toast.show{
+    opacity:1;
+    transform:translateX(-50%) translateY(0);
+  }
+  .today-notice{
+    max-width:600px;
+    margin:0 auto 4px;
+    text-align:center;
+    font-size:0.85rem;
+    color:#8a5a12;
+  }
+  .today-notice.show{
+    background:#fff4e5;
+    border:1px solid #eec98f;
+    border-radius:8px;
+    padding:8px 14px;
+    margin-bottom:16px;
+    cursor:pointer;
+  }
+  .today-notice.show:hover{
+    border-color:var(--accent);
+    color:var(--accent);
+  }
+  @media print{
+    .controls, .toolbar, .add-slot-btn, .del-btn, #studentsPanel, .today-notice{display:none !important;}
+    .month-wrap{display:block !important;}
+  }
+</style>
+</head>
+<body>
+
+<h1>Kath's Schedule</h1>
+<div id="todayNotice" class="today-notice"></div>
+
+<div class="controls">
+  <select class="month-select" id="monthSelect"></select>
+  <div class="view-toggle">
+    <button class="view-btn active" id="listViewBtn">清單檢視</button>
+    <button class="view-btn" id="calViewBtn">日曆檢視</button>
+  </div>
+</div>
+
+<div class="toolbar">
+  <button class="tool-btn" id="manageStudentsBtn">管理學生</button>
+  <button class="tool-btn" id="printBtn">列印 / 存 PDF</button>
+</div>
+
+<div id="studentsPanel" class="cal-panel" style="display:none; max-width:420px;"></div>
+
+<div id="root"></div>
+
+<div class="toast" id="toast">已更新</div>
+
+<script>
+const scheduleData = {
+  jul: {
+    label: "7月",
+    year: 2026,
+    month: 7,
+    days: [
+      { name: "禮拜一", slots: [ {time:"14:00", name:"Hunter Owen"}, {time:"19:00", name:"Vivi Rayna"} ] },
+      { name: "禮拜二", slots: [ {time:"14:30", name:"Bella"}, {time:"18:00", name:"Hannah Jason"} ] },
+      { name: "禮拜三", slots: [ {time:"13:10", name:"Max"}, {time:"17:00", name:"Jim"} ] },
+      { name: "禮拜四", slots: [ {time:"10:00", name:"Hunter Owen"}, {time:"19:00", name:"Vivi Rayna"} ] },
+      { name: "禮拜五", slots: [ {time:"14:30", name:"Max"}, {time:"17:00", name:"Jim"}, {time:"19:00", name:"Fifi Abby"} ] },
+      { name: "禮拜六", slots: [ {time:"10:30", name:"Emma"} ] },
+      { name: "禮拜日", slots: [ {time:"9:00", name:"Vito"} ] },
+    ]
+  },
+  aug: {
+    label: "8月",
+    year: 2026,
+    month: 8,
+    days: [
+      { name: "禮拜一", slots: [ {time:"9:00", name:"Vito"}, {time:"14:00", name:"Vivi Rayna"} ] },
+      { name: "禮拜二", slots: [ {time:"14:30", name:"Bella"}, {time:"17:30", name:"Hannah Jason"} ] },
+      { name: "禮拜三", slots: [ {time:"9:00", name:"Vito"}, {time:"13:10", name:"Max"}, {time:"17:00", name:"Jim"} ] },
+      { name: "禮拜四", slots: [ {time:"9:00", name:"Hannah"}, {time:"14:00", name:"Vivi Rayna"} ] },
+      { name: "禮拜五", slots: [ {time:"14:30", name:"Max"}, {time:"17:00", name:"Jim"}, {time:"19:00", name:"Fifi Abby"} ] },
+      { name: "禮拜六", slots: [ {time:"10:30", name:"Emma"} ] },
+      { name: "禮拜日", slots: [] },
+    ]
+  }
+};
+
+const DAY_NAMES = ["禮拜一","禮拜二","禮拜三","禮拜四","禮拜五","禮拜六","禮拜日"];
+const WEEKDAY_HEADS = ["日","一","二","三","四","五","六"];
+
+// 台灣 2026 年（部分）國定假日與節慶標記。type: "holiday" = 國定假日(紅), "observance" = 民俗節日(橘)
+const HOLIDAYS = {
+  "2026-01-01": {label:"元旦", type:"holiday"},
+  "2026-02-14": {label:"春節連假", type:"holiday"},
+  "2026-02-15": {label:"小年夜", type:"holiday"},
+  "2026-02-16": {label:"除夕", type:"holiday"},
+  "2026-02-17": {label:"春節", type:"holiday"},
+  "2026-02-18": {label:"春節", type:"holiday"},
+  "2026-02-19": {label:"春節", type:"holiday"},
+  "2026-02-20": {label:"春節連假", type:"holiday"},
+  "2026-02-21": {label:"春節連假", type:"holiday"},
+  "2026-02-22": {label:"春節連假", type:"holiday"},
+  "2026-02-28": {label:"和平紀念日", type:"holiday"},
+  "2026-04-04": {label:"兒童節", type:"holiday"},
+  "2026-04-05": {label:"清明節", type:"holiday"},
+  "2026-05-01": {label:"勞動節", type:"holiday"},
+  "2026-06-19": {label:"端午節", type:"holiday"},
+  "2026-08-08": {label:"父親節", type:"observance"},
+  "2026-08-27": {label:"中元節", type:"observance"},
+  "2026-09-25": {label:"中秋節", type:"holiday"},
+  "2026-09-28": {label:"教師節", type:"holiday"},
+  "2026-10-10": {label:"國慶日", type:"holiday"},
+  "2026-10-25": {label:"台灣光復節", type:"holiday"},
+  "2026-12-25": {label:"行憲紀念日", type:"holiday"}
+};
+
+function pad2(n){ return String(n).padStart(2,"0"); }
+function dateKey(y,m,d){ return `${y}-${pad2(m)}-${pad2(d)}`; }
+function isToday(y,m,d){
+  const now = new Date();
+  return now.getFullYear()===y && (now.getMonth()+1)===m && now.getDate()===d;
+}
+const STORAGE_KEY = "schedule-data-v1";
+const MONTH_ORDER_KEY = "schedule-month-order-v1";
+const VIEW_KEY = "schedule-view-v1";
+const ADD_NEW_MONTH = "__add_new_month__";
+
+function loadSaved(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const saved = JSON.parse(raw);
+      Object.keys(saved).forEach(monthKey=>{
+        const existing = scheduleData[monthKey];
+        const savedMonth = saved[monthKey];
+        if(existing){
+          // 保留原本內建的 label/year/month（若舊資料沒有存這些欄位），只覆蓋 days
+          scheduleData[monthKey] = {
+            label: savedMonth.label || existing.label,
+            year: savedMonth.year || existing.year,
+            month: savedMonth.month || existing.month,
+            days: savedMonth.days || existing.days
+          };
+        }else{
+          scheduleData[monthKey] = savedMonth;
+        }
+      });
+    }
+  }catch(e){
+    console.warn("讀取已儲存的課表失敗", e);
+  }
+}
+loadSaved();
+
+function genId(){ return Math.random().toString(36).slice(2,9); }
+
+// 補上舊資料缺少的 slot id，並確保每個月份都有 overrides 容器
+Object.values(scheduleData).forEach(month=>{
+  if(!month.overrides) month.overrides = {};
+  month.days.forEach(day=>{
+    day.slots.forEach(slot=>{
+      if(!slot.id) slot.id = genId();
+    });
+  });
+});
+
+const STATUS_OPTIONS = [
+  {value:"normal", label:"正常"},
+  {value:"leave", label:"請假"},
+  {value:"reschedule", label:"調課"},
+  {value:"other", label:"其他"}
+];
+const STATUS_LABELS = Object.fromEntries(STATUS_OPTIONS.map(s=>[s.value, s.label]));
+
+function getOverride(month, dk, slotId){
+  return (month.overrides[dk] && month.overrides[dk][slotId]) || null;
+}
+function setOverride(month, dk, slotId, patch){
+  if(!month.overrides[dk]) month.overrides[dk] = {};
+  const cur = month.overrides[dk][slotId] || {};
+  month.overrides[dk][slotId] = Object.assign({}, cur, patch);
+  saveData();
+}
+function clearOverride(month, dk, slotId){
+  if(month.overrides[dk]){
+    delete month.overrides[dk][slotId];
+    if(Object.keys(month.overrides[dk]).length === 0) delete month.overrides[dk];
+  }
+  saveData();
+}
+function getAdhoc(month, dk){
+  return (month.overrides[dk] && month.overrides[dk].__adhoc) || [];
+}
+function addAdhoc(month, dk, slot){
+  if(!month.overrides[dk]) month.overrides[dk] = {};
+  if(!month.overrides[dk].__adhoc) month.overrides[dk].__adhoc = [];
+  month.overrides[dk].__adhoc.push(slot);
+  saveData();
+}
+function removeAdhoc(month, dk, slotId){
+  if(month.overrides[dk] && month.overrides[dk].__adhoc){
+    month.overrides[dk].__adhoc = month.overrides[dk].__adhoc.filter(s=>s.id!==slotId);
+    if(month.overrides[dk].__adhoc.length===0) delete month.overrides[dk].__adhoc;
+    if(Object.keys(month.overrides[dk]).length === 0) delete month.overrides[dk];
+  }
+  saveData();
+}
+// 找出「調課」到某一天的項目（原本屬於別天固定課表，但被改到這一天）
+function getIncomingReschedules(month, dk){
+  const result = [];
+  Object.keys(month.overrides || {}).forEach(originKey=>{
+    if(originKey === dk) return;
+    const slotMap = month.overrides[originKey] || {};
+    Object.keys(slotMap).forEach(slotId=>{
+      if(slotId === "__adhoc") return;
+      const ov = slotMap[slotId];
+      if(ov && ov.status === "reschedule" && ov.moveDate === dk){
+        result.push({ time: ov.time, name: ov.name, fromKey: originKey, slotId: slotId });
+      }
+    });
+  });
+  return result;
+}
+
+
+let monthOrder = Object.keys(scheduleData);
+try{
+  const savedOrder = JSON.parse(localStorage.getItem(MONTH_ORDER_KEY) || "null");
+  if(Array.isArray(savedOrder) && savedOrder.length){
+    monthOrder = savedOrder.filter(k=>scheduleData[k]);
+    Object.keys(scheduleData).forEach(k=>{
+      if(!monthOrder.includes(k)) monthOrder.push(k);
+    });
+  }
+}catch(e){}
+
+function saveMonthOrder(){
+  try{ localStorage.setItem(MONTH_ORDER_KEY, JSON.stringify(monthOrder)); }catch(e){}
+}
+saveMonthOrder();
+
+function saveData(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(scheduleData));
+  }catch(e){
+    console.warn("儲存課表失敗", e);
+  }
+}
+
+function toTimeInputValue(t){
+  const m = String(t||"").match(/^(\d{1,2}):(\d{2})$/);
+  if(!m) return "00:00";
+  const h = m[1].padStart(2,"0");
+  return h + ":" + m[2];
+}
+
+const STUDENTS_KEY = "schedule-students-v1";
+const ADD_NEW = "__add_new_student__";
+
+function defaultStudents(){
+  const set = new Set();
+  Object.values(scheduleData).forEach(month=>{
+    month.days.forEach(day=>{
+      day.slots.forEach(slot=>{
+        if(slot.name) set.add(slot.name);
+      });
+    });
+  });
+  return Array.from(set).sort((a,b)=>a.localeCompare(b, "zh-Hant"));
+}
+
+let students = defaultStudents();
+
+function loadStudents(){
+  try{
+    const raw = localStorage.getItem(STUDENTS_KEY);
+    if(raw){
+      const saved = JSON.parse(raw);
+      if(Array.isArray(saved) && saved.length){
+        students = saved;
+      }
+    }
+  }catch(e){
+    console.warn("讀取學生名單失敗", e);
+  }
+}
+loadStudents();
+
+function saveStudents(){
+  try{
+    localStorage.setItem(STUDENTS_KEY, JSON.stringify(students));
+  }catch(e){
+    console.warn("儲存學生名單失敗", e);
+  }
+}
+
+function addStudent(name){
+  const trimmed = (name||"").trim();
+  if(!trimmed) return null;
+  if(!students.includes(trimmed)){
+    students.push(trimmed);
+    students.sort((a,b)=>a.localeCompare(b, "zh-Hant"));
+    saveStudents();
+  }
+  return trimmed;
+}
+
+function removeStudent(name){
+  const idx = students.indexOf(name);
+  if(idx === -1) return;
+  students.splice(idx, 1);
+  saveStudents();
+}
+
+// 檢查這個學生名字是否還出現在任何課表（固定課表／單日override／臨時時段）
+function isStudentInUse(name){
+  return Object.values(scheduleData).some(month=>{
+    const inTemplate = month.days.some(day=>day.slots.some(slot=>slot.name === name));
+    if(inTemplate) return true;
+    const overrides = month.overrides || {};
+    return Object.keys(overrides).some(dk=>{
+      const slotMap = overrides[dk] || {};
+      return Object.keys(slotMap).some(k=>{
+        if(k === "__adhoc"){
+          return (slotMap.__adhoc || []).some(a=>a.name === name);
+        }
+        const ov = slotMap[k];
+        return ov && ov.name === name;
+      });
+    });
+  });
+}
+
+let currentMonth = monthOrder[0];
+let currentView = localStorage.getItem(VIEW_KEY) === "cal" ? "cal" : "list";
+let selectedDateKey = null;
+let selectedDateInfo = null;
+
+const root = document.getElementById("root");
+const toast = document.getElementById("toast");
+const monthSelect = document.getElementById("monthSelect");
+const listViewBtn = document.getElementById("listViewBtn");
+const calViewBtn = document.getElementById("calViewBtn");
+const studentsPanel = document.getElementById("studentsPanel");
+const manageStudentsBtn = document.getElementById("manageStudentsBtn");
+const todayNotice = document.getElementById("todayNotice");
+let studentsPanelOpen = false;
+
+function renderStudentsPanel(){
+  studentsPanel.innerHTML = "";
+
+  const head = document.createElement("div");
+  head.className = "cal-panel-head";
+  head.innerHTML = `<span class="cal-panel-title">管理學生</span>`;
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "cal-panel-close";
+  closeBtn.textContent = "✕";
+  closeBtn.title = "關閉";
+  closeBtn.addEventListener("click", ()=>{
+    studentsPanelOpen = false;
+    studentsPanel.style.display = "none";
+  });
+  head.appendChild(closeBtn);
+  studentsPanel.appendChild(head);
+
+  const listWrap = document.createElement("div");
+  listWrap.className = "slots-wrap";
+  if(students.length === 0){
+    const hint = document.createElement("div");
+    hint.className = "empty-hint";
+    hint.textContent = "還沒有學生";
+    listWrap.appendChild(hint);
+  }
+  students.forEach(name=>{
+    const row = document.createElement("div");
+    row.className = "slot";
+
+    const nameEl = document.createElement("span");
+    nameEl.className = "name";
+    nameEl.style.cursor = "default";
+    nameEl.textContent = name;
+
+    const delBtn = document.createElement("button");
+    delBtn.className = "del-btn";
+    delBtn.textContent = "✕";
+    delBtn.title = "刪除這位學生";
+    delBtn.addEventListener("click", ()=>{
+      const msg = isStudentInUse(name)
+        ? `「${name}」目前還排有課，確定要從學生清單刪除嗎？（課表本身不會被刪除，只是選單暫時不會出現這個名字）`
+        : `確定要刪除「${name}」嗎？`;
+      if(window.confirm(msg)){
+        removeStudent(name);
+        showToast("已刪除學生");
+        renderStudentsPanel();
+      }
+    });
+
+    row.appendChild(nameEl);
+    row.appendChild(delBtn);
+    listWrap.appendChild(row);
+  });
+  studentsPanel.appendChild(listWrap);
+
+  const addRow = document.createElement("div");
+  addRow.className = "slot";
+  const addInput = document.createElement("input");
+  addInput.type = "text";
+  addInput.className = "name";
+  addInput.placeholder = "新增學生姓名";
+  function doAdd(){
+    const added = addStudent(addInput.value);
+    if(added){
+      addInput.value = "";
+      showToast("已新增學生");
+      renderStudentsPanel();
+    }
+  }
+  addInput.addEventListener("keydown", (e)=>{
+    if(e.key === "Enter"){
+      e.preventDefault();
+      doAdd();
+    }
+  });
+  const addBtn = document.createElement("button");
+  addBtn.className = "del-btn";
+  addBtn.textContent = "＋";
+  addBtn.title = "新增學生";
+  addBtn.addEventListener("click", doAdd);
+  addRow.appendChild(addInput);
+  addRow.appendChild(addBtn);
+  studentsPanel.appendChild(addRow);
+}
+
+manageStudentsBtn.addEventListener("click", ()=>{
+  studentsPanelOpen = !studentsPanelOpen;
+  studentsPanel.style.display = studentsPanelOpen ? "block" : "none";
+  if(studentsPanelOpen) renderStudentsPanel();
+});
+
+function showToast(msg){
+  toast.textContent = msg || "已更新";
+  toast.classList.add("show");
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>toast.classList.remove("show"), 1200);
+}
+
+function populateMonthSelect(){
+  monthSelect.innerHTML = "";
+  monthOrder.forEach(key=>{
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = scheduleData[key].label;
+    monthSelect.appendChild(opt);
+  });
+  const addOpt = document.createElement("option");
+  addOpt.value = ADD_NEW_MONTH;
+  addOpt.textContent = "＋ 新增月份...";
+  monthSelect.appendChild(addOpt);
+  monthSelect.value = currentMonth;
+}
+
+monthSelect.addEventListener("change", ()=>{
+  if(monthSelect.value === ADD_NEW_MONTH){
+    const input = window.prompt("輸入新月份（格式：西元年-月，例如 2026-09）：", "");
+    const m = String(input||"").trim().match(/^(\d{4})-(\d{1,2})$/);
+    if(m){
+      const year = parseInt(m[1],10);
+      const mon = parseInt(m[2],10);
+      if(mon>=1 && mon<=12){
+        const key = "m_" + Date.now();
+        scheduleData[key] = {
+          label: mon + "月",
+          year: year,
+          month: mon,
+          overrides: {},
+          days: DAY_NAMES.map(n=>({ name:n, slots:[] }))
+        };
+        monthOrder.push(key);
+        currentMonth = key;
+        selectedDateKey = null;
+        selectedDateInfo = null;
+        saveData();
+        saveMonthOrder();
+        populateMonthSelect();
+        render();
+        showToast("已新增月份");
+      }else{
+        alert("月份需為 1-12");
+        monthSelect.value = currentMonth;
+      }
+    }else{
+      monthSelect.value = currentMonth;
+    }
+    return;
+  }
+  currentMonth = monthSelect.value;
+  selectedDateKey = null;
+  selectedDateInfo = null;
+  render();
+});
+
+function setView(view, keepSelection){
+  currentView = view;
+  if(!keepSelection){
+    selectedDateKey = null;
+    selectedDateInfo = null;
+  }
+  try{ localStorage.setItem(VIEW_KEY, view); }catch(e){}
+  listViewBtn.classList.toggle("active", view === "list");
+  calViewBtn.classList.toggle("active", view === "cal");
+  render();
+}
+listViewBtn.addEventListener("click", ()=>setView("list"));
+calViewBtn.addEventListener("click", ()=>setView("cal"));
+
+function buildSlotsBlock(day, onChange){
+  const container = document.createElement("div");
+  const slotsWrap = document.createElement("div");
+  slotsWrap.className = "slots-wrap";
+  container.appendChild(slotsWrap);
+
+  function renderSlots(){
+    slotsWrap.innerHTML = "";
+    if(day.slots.length === 0){
+      const hint = document.createElement("div");
+      hint.className = "empty-hint";
+      hint.textContent = "無課程";
+      slotsWrap.appendChild(hint);
+    }
+    day.slots.forEach((slot, slotIdx)=>{
+      const row = document.createElement("div");
+      row.className = "slot";
+
+      const timeEl = document.createElement("input");
+      timeEl.type = "time";
+      timeEl.step = 60;
+      timeEl.className = "time";
+      timeEl.value = toTimeInputValue(slot.time);
+      timeEl.addEventListener("change", ()=>{
+        if(timeEl.value){
+          day.slots[slotIdx].time = timeEl.value;
+          saveData();
+          showToast("已更新時間");
+          if(onChange) onChange();
+        }
+      });
+
+      const nameEl = document.createElement("select");
+      nameEl.className = "name";
+
+      function populateNameOptions(){
+        nameEl.innerHTML = "";
+        if(slot.name && !students.includes(slot.name)){
+          addStudent(slot.name);
+        }
+        students.forEach(s=>{
+          const opt = document.createElement("option");
+          opt.value = s;
+          opt.textContent = s;
+          nameEl.appendChild(opt);
+        });
+        const addOpt = document.createElement("option");
+        addOpt.value = ADD_NEW;
+        addOpt.textContent = "＋ 新增學生...";
+        nameEl.appendChild(addOpt);
+        nameEl.value = slot.name || "";
+      }
+      populateNameOptions();
+
+      nameEl.addEventListener("change", ()=>{
+        if(nameEl.value === ADD_NEW){
+          const newName = window.prompt("輸入新學生姓名：", "");
+          const added = addStudent(newName);
+          if(added){
+            day.slots[slotIdx].name = added;
+            populateNameOptions();
+            saveData();
+            showToast("已新增學生");
+            if(onChange) onChange();
+          }else{
+            nameEl.value = slot.name || "";
+          }
+          return;
+        }
+        day.slots[slotIdx].name = nameEl.value;
+        saveData();
+        showToast("已更新姓名");
+        if(onChange) onChange();
+      });
+
+      const delBtn = document.createElement("button");
+      delBtn.className = "del-btn";
+      delBtn.textContent = "✕";
+      delBtn.title = "刪除此時段";
+      delBtn.addEventListener("click", ()=>{
+        day.slots.splice(slotIdx, 1);
+        renderSlots();
+        saveData();
+        showToast("已刪除");
+        if(onChange) onChange();
+      });
+
+      row.appendChild(timeEl);
+      row.appendChild(nameEl);
+      row.appendChild(delBtn);
+      slotsWrap.appendChild(row);
+    });
+  }
+  renderSlots();
+
+  const addBtn = document.createElement("button");
+  addBtn.className = "add-slot-btn";
+  addBtn.textContent = "＋ 新增時段";
+  addBtn.addEventListener("click", ()=>{
+    day.slots.push({id: genId(), time:"00:00", name: students[0] || ""});
+    renderSlots();
+    saveData();
+    if(onChange) onChange();
+  });
+  container.appendChild(addBtn);
+
+  return container;
+}
+
+function buildDatePanel(month, info){
+  const { year, mon, d, dayNameIdx } = info;
+  const key = dateKey(year, mon, d);
+  const dayData = month.days[dayNameIdx];
+  const holiday = HOLIDAYS[key];
+
+  const panel = document.createElement("div");
+  panel.className = "cal-panel";
+
+  const panelHead = document.createElement("div");
+  panelHead.className = "cal-panel-head";
+  panelHead.innerHTML = `<span class="cal-panel-title">${mon}月${d}日（${DAY_NAMES[dayNameIdx]}）${holiday ? ' <span class="cal-panel-holiday">' + holiday.label + '</span>' : ""}</span>`;
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "cal-panel-close";
+  closeBtn.textContent = "✕";
+  closeBtn.title = "關閉";
+  closeBtn.addEventListener("click", ()=>{
+    selectedDateKey = null;
+    selectedDateInfo = null;
+    render();
+  });
+  panelHead.appendChild(closeBtn);
+  panel.appendChild(panelHead);
+
+  const hint = document.createElement("div");
+  hint.className = "cal-panel-hint";
+  hint.textContent = "這裡只會改動這一天，不影響其他星期" + DAY_NAMES[dayNameIdx] + "。";
+  panel.appendChild(hint);
+
+  // 異動提醒：這一天只要有請假／調課，先在清單上方列出來
+  const changeLines = [];
+  (dayData ? dayData.slots : []).forEach(slot=>{
+    const ov = getOverride(month, key, slot.id);
+    if(ov && (ov.status === "leave" || ov.status === "reschedule")){
+      const nm = ov.name || slot.name;
+      if(ov.status === "leave"){
+        changeLines.push(`${toTimeInputValue(slot.time)} ${nm} 請假`);
+      }else{
+        const destKey = ov.moveDate && ov.moveDate !== key ? ov.moveDate : null;
+        if(destKey){
+          const destLabel = destKey.slice(5).replace("-", "/");
+          changeLines.push(`${nm} 調課：${toTimeInputValue(slot.time)} → ${destLabel} ${toTimeInputValue(ov.time || slot.time)}`);
+        }else{
+          changeLines.push(`${nm} 調課：${toTimeInputValue(slot.time)} → ${toTimeInputValue(ov.time || slot.time)}`);
+        }
+      }
+    }
+  });
+  getIncomingReschedules(month, key).forEach(inc=>{
+    const fromLabel = inc.fromKey.slice(5).replace("-", "/");
+    changeLines.push(`${inc.name} 調課：${fromLabel} → 今天 ${toTimeInputValue(inc.time)}`);
+  });
+  if(changeLines.length){
+    const alertBox = document.createElement("div");
+    alertBox.className = "cal-alert";
+    alertBox.textContent = "⚠ " + changeLines.join("；");
+    panel.appendChild(alertBox);
+  }
+
+  const slotsWrap = document.createElement("div");
+  slotsWrap.className = "slots-wrap";
+  panel.appendChild(slotsWrap);
+
+  (dayData ? dayData.slots : []).forEach(slot=>{
+    const ov = getOverride(month, key, slot.id) || {};
+    const effTime = ov.time || slot.time;
+    const effName = ov.name || slot.name;
+    const effStatus = ov.status || "normal";
+
+    const row = document.createElement("div");
+    row.className = "slot";
+
+    const timeInput = document.createElement("input");
+    timeInput.type = "time";
+    timeInput.step = 60;
+    timeInput.className = "time";
+    timeInput.value = toTimeInputValue(effTime);
+
+    const nameSelect = document.createElement("select");
+    nameSelect.className = "name";
+    function populateNames(){
+      nameSelect.innerHTML = "";
+      students.forEach(s=>{
+        const opt = document.createElement("option");
+        opt.value = s; opt.textContent = s;
+        nameSelect.appendChild(opt);
+      });
+      const addOpt = document.createElement("option");
+      addOpt.value = ADD_NEW;
+      addOpt.textContent = "＋ 新增學生...";
+      nameSelect.appendChild(addOpt);
+      nameSelect.value = effName;
+    }
+    populateNames();
+
+    const statusSelect = document.createElement("select");
+    statusSelect.className = "status";
+    STATUS_OPTIONS.forEach(s=>{
+      const opt = document.createElement("option");
+      opt.value = s.value; opt.textContent = s.label;
+      statusSelect.appendChild(opt);
+    });
+    statusSelect.value = effStatus;
+
+    // 調課時可以指定要換到哪一天，預設是原本這一天
+    let dateInput = null;
+    if(effStatus === "reschedule"){
+      dateInput = document.createElement("input");
+      dateInput.type = "date";
+      dateInput.className = "resched-date";
+      dateInput.value = ov.moveDate || key;
+    }
+
+    function commit(){
+      const status = statusSelect.value;
+      // 狀態是「正常」時，時間一律跟清單（固定課表）一致，不留下舊的調課時間
+      const time = status === "normal" ? slot.time : (timeInput.value || slot.time);
+      const patch = { time: time, name: nameSelect.value, status: status };
+      patch.moveDate = status === "reschedule" ? ((dateInput && dateInput.value) || key) : undefined;
+      setOverride(month, key, slot.id, patch);
+      showToast("已更新這一天的狀態");
+      render();
+    }
+
+    timeInput.addEventListener("change", ()=>{
+      // 改時間就視為調課，自動把狀態切成「調課」
+      if(statusSelect.value === "normal"){
+        statusSelect.value = "reschedule";
+      }
+      commit();
+    });
+    statusSelect.addEventListener("change", ()=>{
+      if(statusSelect.value === "normal"){
+        timeInput.value = toTimeInputValue(slot.time);
+      }
+      commit();
+    });
+    if(dateInput){
+      dateInput.addEventListener("change", commit);
+    }
+    nameSelect.addEventListener("change", ()=>{
+      if(nameSelect.value === ADD_NEW){
+        const newName = window.prompt("輸入新學生姓名：", "");
+        const added = addStudent(newName);
+        if(added){
+          nameSelect.value = added;
+          commit();
+        }else{
+          nameSelect.value = effName;
+        }
+        return;
+      }
+      commit();
+    });
+
+    const hasOverride = !!(ov && Object.keys(ov).length);
+    const resetBtn = document.createElement("button");
+    resetBtn.className = "del-btn";
+    resetBtn.title = "還原成固定課表";
+    resetBtn.textContent = "↺";
+    resetBtn.style.visibility = hasOverride ? "visible" : "hidden";
+    if(hasOverride){
+      resetBtn.addEventListener("click", ()=>{
+        clearOverride(month, key, slot.id);
+        showToast("已還原");
+        render();
+      });
+    }
+
+    row.appendChild(timeInput);
+    row.appendChild(nameSelect);
+    row.appendChild(statusSelect);
+    if(dateInput) row.appendChild(dateInput);
+    row.appendChild(resetBtn);
+    slotsWrap.appendChild(row);
+  });
+
+  getIncomingReschedules(month, key).forEach(inc=>{
+    const row = document.createElement("div");
+    row.className = "slot";
+
+    const timeEl = document.createElement("span");
+    timeEl.className = "time";
+    timeEl.textContent = toTimeInputValue(inc.time);
+
+    const nameEl = document.createElement("span");
+    nameEl.className = "name";
+    nameEl.textContent = inc.name + "（從" + inc.fromKey.slice(5).replace("-", "/") + "調來）";
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.className = "del-btn";
+    cancelBtn.title = "取消調課，改回原本日期";
+    cancelBtn.textContent = "↺";
+    cancelBtn.addEventListener("click", ()=>{
+      clearOverride(month, inc.fromKey, inc.slotId);
+      showToast("已取消調課");
+      render();
+    });
+
+    row.appendChild(timeEl);
+    row.appendChild(nameEl);
+    row.appendChild(cancelBtn);
+    slotsWrap.appendChild(row);
+  });
+
+  getAdhoc(month, key).forEach(a=>{
+    const row = document.createElement("div");
+    row.className = "slot";
+
+    const timeInput = document.createElement("input");
+    timeInput.type = "time";
+    timeInput.step = 60;
+    timeInput.className = "time";
+    timeInput.value = toTimeInputValue(a.time);
+
+    const nameSelect = document.createElement("select");
+    nameSelect.className = "name";
+    students.forEach(s=>{
+      const opt = document.createElement("option");
+      opt.value = s; opt.textContent = s;
+      nameSelect.appendChild(opt);
+    });
+    nameSelect.value = a.name;
+
+    const statusSelect = document.createElement("select");
+    statusSelect.className = "status";
+    STATUS_OPTIONS.forEach(s=>{
+      const opt = document.createElement("option");
+      opt.value = s.value; opt.textContent = s.label;
+      statusSelect.appendChild(opt);
+    });
+    statusSelect.value = a.status || "other";
+
+    function commitAdhoc(){
+      a.time = timeInput.value || a.time;
+      a.name = nameSelect.value;
+      a.status = statusSelect.value;
+      saveData();
+      showToast("已更新臨時時段");
+      render();
+    }
+    timeInput.addEventListener("change", commitAdhoc);
+    nameSelect.addEventListener("change", commitAdhoc);
+    statusSelect.addEventListener("change", commitAdhoc);
+
+    const delBtn = document.createElement("button");
+    delBtn.className = "del-btn";
+    delBtn.textContent = "✕";
+    delBtn.title = "刪除這個臨時時段";
+    delBtn.addEventListener("click", ()=>{
+      removeAdhoc(month, key, a.id);
+      showToast("已刪除");
+      render();
+    });
+
+    row.appendChild(timeInput);
+    row.appendChild(nameSelect);
+    row.appendChild(statusSelect);
+    row.appendChild(delBtn);
+    slotsWrap.appendChild(row);
+  });
+
+  const addAdhocBtn = document.createElement("button");
+  addAdhocBtn.className = "add-slot-btn";
+  addAdhocBtn.textContent = "＋ 新增本日臨時時段";
+  addAdhocBtn.addEventListener("click", ()=>{
+    addAdhoc(month, key, { id: genId(), time:"00:00", name: students[0] || "", status:"other" });
+    showToast("已新增臨時時段");
+    render();
+  });
+  panel.appendChild(addAdhocBtn);
+
+  return panel;
+}
+
+function renderListView(month){
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  month.days.forEach(day=>{
+    const card = document.createElement("div");
+    card.className = "day-card";
+    const header = document.createElement("div");
+    header.className = "day-header";
+    header.innerHTML = `<span class="day-title">${day.name}</span>`;
+    card.appendChild(header);
+    card.appendChild(buildSlotsBlock(day));
+    grid.appendChild(card);
+  });
+  return grid;
+}
+
+function renderCalView(month){
+  const container = document.createElement("div");
+
+  if(!month.year || !month.month){
+    const hint = document.createElement("div");
+    hint.className = "empty-hint";
+    hint.textContent = "這個月份沒有對應的西元年月，無法顯示日曆（請重新新增月份時填入年月）";
+    container.appendChild(hint);
+    return container;
+  }
+
+  const year = month.year;
+  const mon = month.month;
+  const firstDate = new Date(year, mon-1, 1);
+  const daysInMonth = new Date(year, mon, 0).getDate();
+  const startWeekday = firstDate.getDay();
+
+  const grid = document.createElement("div");
+  grid.className = "cal-grid";
+
+  WEEKDAY_HEADS.forEach((label, i)=>{
+    const head = document.createElement("div");
+    head.className = "cal-head" + ((i===0||i===6) ? " weekend" : "");
+    head.textContent = label;
+    grid.appendChild(head);
+  });
+
+  for(let i=0;i<startWeekday;i++){
+    const filler = document.createElement("div");
+    filler.className = "cal-cell empty";
+    grid.appendChild(filler);
+  }
+
+  for(let d=1; d<=daysInMonth; d++){
+    const jsDate = new Date(year, mon-1, d);
+    const jsDay = jsDate.getDay();
+    const dayNameIdx = (jsDay + 6) % 7;
+    const dayData = month.days[dayNameIdx];
+    const key = dateKey(year, mon, d);
+    const holiday = HOLIDAYS[key];
+
+    const cell = document.createElement("div");
+    let cls = "cal-cell";
+    if(jsDay===0 || jsDay===6) cls += " weekend";
+    if(holiday) cls += " " + holiday.type;
+    if(isToday(year, mon, d)) cls += " is-today";
+    cell.className = cls;
+
+    const dateEl = document.createElement("div");
+    dateEl.className = "cal-date";
+    dateEl.textContent = d;
+    cell.appendChild(dateEl);
+
+    if(holiday){
+      const label = document.createElement("div");
+      label.className = "cal-day-label";
+      label.textContent = holiday.label;
+      cell.appendChild(label);
+    }
+
+    const effectiveList = [];
+    if(dayData){
+      dayData.slots.forEach(slot=>{
+        const ov = getOverride(month, key, slot.id);
+        // 調課到別天的話，這一天就不重複顯示，改在調課去的那一天顯示
+        if(ov && ov.status === "reschedule" && ov.moveDate && ov.moveDate !== key) return;
+        effectiveList.push({
+          time: (ov && ov.time) || slot.time,
+          name: (ov && ov.name) || slot.name,
+          status: (ov && ov.status) || "normal",
+          note: (ov && ov.note) || "",
+          adhoc:false
+        });
+      });
+    }
+    getAdhoc(month, key).forEach(a=>{
+      effectiveList.push({ time:a.time, name:a.name, status:a.status||"normal", note:a.note||"", adhoc:true });
+    });
+    getIncomingReschedules(month, key).forEach(inc=>{
+      effectiveList.push({ time: inc.time, name: inc.name, status: "reschedule", note:"", adhoc:true });
+    });
+
+    if(effectiveList.length){
+      const sorted = effectiveList.slice().sort((a,b)=> toTimeInputValue(a.time).localeCompare(toTimeInputValue(b.time)));
+      const MAX_LINES = 3;
+      sorted.slice(0, MAX_LINES).forEach(item=>{
+        const line = document.createElement("div");
+        line.className = "cal-slot-line status-" + item.status;
+        let txt = toTimeInputValue(item.time) + " " + item.name;
+        if(item.status !== "normal") txt += "（" + STATUS_LABELS[item.status] + "）";
+        line.textContent = txt;
+        cell.appendChild(line);
+      });
+      if(sorted.length > MAX_LINES){
+        const more = document.createElement("div");
+        more.className = "cal-slot-more";
+        more.textContent = "+" + (sorted.length - MAX_LINES) + " 更多";
+        cell.appendChild(more);
+      }
+    }
+
+    if(key === selectedDateKey) cell.classList.add("selected-date");
+
+    cell.addEventListener("click", ()=>{
+      if(selectedDateKey === key){
+        selectedDateKey = null;
+        selectedDateInfo = null;
+      }else{
+        selectedDateKey = key;
+        selectedDateInfo = { year, mon, d, dayNameIdx };
+      }
+      render();
+    });
+
+    grid.appendChild(cell);
+  }
+
+  container.appendChild(grid);
+
+  const legend = document.createElement("div");
+  legend.className = "cal-legend";
+  legend.innerHTML = `
+    <span><i class="sw-holiday"></i>國定假日</span>
+    <span><i class="sw-observance"></i>民俗節日</span>
+    <span><i class="sw-weekend"></i>週末</span>
+  `;
+  container.appendChild(legend);
+
+  const note = document.createElement("div");
+  note.className = "empty-hint";
+  note.style.textAlign = "center";
+  note.textContent = "點日期可以只修改「這一天」，例如請假、調課或臨時加課（固定課表請到「清單檢視」修改）";
+  container.appendChild(note);
+
+  if(selectedDateKey && selectedDateInfo){
+    container.appendChild(buildDatePanel(month, selectedDateInfo));
+  }
+
+  return container;
+}
+
+// 找出「今天」對應到哪個月份資料（依實際西元年月比對，不受目前檢視的月份影響）
+function findTodayMonth(){
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
+  const d = now.getDate();
+  const monthKey = Object.keys(scheduleData).find(k=>{
+    const mo = scheduleData[k];
+    return mo.year === y && mo.month === m;
+  });
+  if(!monthKey) return null;
+  return { month: scheduleData[monthKey], year: y, mon: m, d: d };
+}
+
+function updateTodayNotice(){
+  if(!todayNotice) return;
+  const info = findTodayMonth();
+  if(!info){
+    todayNotice.className = "today-notice";
+    todayNotice.textContent = "";
+    return;
+  }
+  const { month, year, mon, d } = info;
+  const key = dateKey(year, mon, d);
+  const jsDay = new Date(year, mon - 1, d).getDay();
+  const dayNameIdx = (jsDay + 6) % 7;
+  const dayData = month.days[dayNameIdx];
+
+  const lines = [];
+  (dayData ? dayData.slots : []).forEach(slot=>{
+    const ov = getOverride(month, key, slot.id);
+    if(!ov) return;
+    const nm = ov.name || slot.name;
+    if(ov.status === "leave"){
+      lines.push(`${nm} 請假`);
+    }else if(ov.status === "reschedule"){
+      const t = toTimeInputValue(ov.time || slot.time);
+      if(ov.moveDate && ov.moveDate !== key){
+        lines.push(`${nm} 調課到 ${ov.moveDate.slice(5).replace("-", "/")} ${t}`);
+      }else{
+        lines.push(`${nm} 調課時間到 ${t}`);
+      }
+    }
+  });
+  getIncomingReschedules(month, key).forEach(inc=>{
+    lines.push(`${inc.name} 從 ${inc.fromKey.slice(5).replace("-", "/")} 調課過來 ${toTimeInputValue(inc.time)}`);
+  });
+  getAdhoc(month, key).forEach(a=>{
+    if(a.status === "leave") lines.push(`${a.name} 請假`);
+    else if(a.status === "reschedule") lines.push(`${a.name} 調課`);
+  });
+
+  if(lines.length){
+    todayNotice.className = "today-notice show";
+    todayNotice.textContent = "📌 今日提醒：" + lines.join("、");
+  }else{
+    todayNotice.className = "today-notice";
+    todayNotice.textContent = "";
+  }
+}
+
+function render(){
+  root.innerHTML = "";
+  const month = scheduleData[currentMonth];
+  if(!month) return;
+  const content = currentView === "cal" ? renderCalView(month) : renderListView(month);
+  root.appendChild(content);
+  updateTodayNotice();
+}
+
+todayNotice.addEventListener("click", ()=>{
+  const info = findTodayMonth();
+  if(!info) return;
+  const monthKey = Object.keys(scheduleData).find(k=> scheduleData[k] === info.month);
+  if(!monthKey) return;
+  currentMonth = monthKey;
+  monthSelect.value = monthKey;
+  const jsDay = new Date(info.year, info.mon - 1, info.d).getDay();
+  const dayNameIdx = (jsDay + 6) % 7;
+  selectedDateKey = dateKey(info.year, info.mon, info.d);
+  selectedDateInfo = { year: info.year, mon: info.mon, d: info.d, dayNameIdx: dayNameIdx };
+  setView("cal", true);
+});
+
+populateMonthSelect();
+setView(currentView);
+
+document.getElementById("printBtn").addEventListener("click", ()=>window.print());
+</script>
+
+</body>
+</html>

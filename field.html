@@ -1,0 +1,801 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>SiteLink 現場回報</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="SiteLink" />
+<meta name="theme-color" content="#2c4f75" />
+<style>
+  :root {
+    --bg: #e2d9cf;
+    --panel: #f7ece6;
+    --border: rgba(43,38,31,0.30);
+    --text: #2b261f;
+    --muted: #847a6d;
+    --accent: #2c4f75;
+    --accent-weak: rgba(44,79,117,0.10);
+    --danger: #a5272c;
+    --danger-weak: rgba(165,39,44,0.10);
+    --warn: #9c6a1f;
+    --warn-weak: rgba(156,106,31,0.10);
+    --ok: #2f6b3f;
+    --ok-weak: rgba(47,107,63,0.10);
+    --radius: 3px;
+    --shadow: 0 1px 0 rgba(43,38,31,0.18), 0 6px 14px rgba(0,0,0,0.10);
+    --font-mono: ui-monospace, "SF Mono", "Courier New", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1e;
+      --panel: #2c2c2e;
+      --border: rgba(255,255,255,0.12);
+      --text: #ededec;
+      --muted: #98979d;
+      --accent: #6ea8e0;
+      --accent-weak: rgba(110,168,224,0.16);
+      --danger: #ff6b6b;
+      --danger-weak: rgba(255,107,107,0.16);
+      --warn: #e0a940;
+      --warn-weak: rgba(224,169,64,0.16);
+      --ok: #5fc27e;
+      --ok-weak: rgba(95,194,126,0.16);
+      --shadow: 0 1px 0 rgba(255,255,255,0.04), 0 4px 14px rgba(0,0,0,0.45);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1c1c1e; --panel: #2c2c2e; --border: rgba(255,255,255,0.12);
+    --text: #ededec; --muted: #98979d; --accent: #6ea8e0; --accent-weak: rgba(110,168,224,0.16);
+    --danger: #ff6b6b; --danger-weak: rgba(255,107,107,0.16);
+    --warn: #e0a940; --warn-weak: rgba(224,169,64,0.16);
+    --ok: #5fc27e; --ok-weak: rgba(95,194,126,0.16);
+    --shadow: 0 1px 0 rgba(255,255,255,0.04), 0 4px 14px rgba(0,0,0,0.45);
+  }
+  :root[data-theme="light"] {
+    --bg: #e2d9cf; --panel: #f7ece6; --border: rgba(43,38,31,0.30);
+    --text: #2b261f; --muted: #847a6d; --accent: #2c4f75; --accent-weak: rgba(44,79,117,0.10);
+    --danger: #a5272c; --danger-weak: rgba(165,39,44,0.10);
+    --warn: #9c6a1f; --warn-weak: rgba(156,106,31,0.10);
+    --ok: #2f6b3f; --ok-weak: rgba(47,107,63,0.10);
+    --shadow: 0 1px 0 rgba(43,38,31,0.18), 0 6px 14px rgba(0,0,0,0.10);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding-bottom: 40px;
+  }
+  .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  header {
+    padding: max(16px, env(safe-area-inset-top)) 18px 16px;
+    background: var(--panel);
+    border-bottom: 1.5px dashed var(--border);
+    box-shadow: var(--shadow);
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    position: sticky; top: 0; z-index: 20;
+  }
+  header h1 { font-size: 17px; font-weight: 700; margin: 0; }
+  header a { color: var(--muted); font-size: 12px; text-decoration: none; border-bottom: 1px dotted var(--muted); }
+
+  .theme-switch {
+    --track-off: #d6d0c2; --track-on: #2c2c2e;
+    position: relative; flex-shrink: 0; width: 44px; height: 26px; padding: 0;
+    border-radius: 999px; border: 1px solid var(--border); background: var(--track-off);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+  .theme-switch[aria-checked="true"] { background: var(--track-on); border-color: var(--track-on); }
+  .theme-switch-thumb {
+    position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35);
+    transition: transform 0.2s ease;
+  }
+  .theme-switch[aria-checked="true"] .theme-switch-thumb { transform: translateX(18px); }
+
+  main { padding: 16px; max-width: 480px; margin: 0 auto; }
+
+  .panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    margin-bottom: 16px; padding: 16px;
+  }
+  .field { margin-bottom: 16px; }
+  .field:last-child { margin-bottom: 0; }
+  label {
+    display: block; font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--muted); margin-bottom: 6px;
+  }
+  select, input[type=text], textarea {
+    width: 100%; font-family: inherit; font-size: 16px;
+    border-radius: 6px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); padding: 11px 12px;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  button {
+    font-family: inherit; font-size: 15px; font-weight: 600;
+    border-radius: 6px; border: 1px solid var(--border);
+    background: var(--panel); color: var(--text);
+    padding: 12px 16px; cursor: pointer; width: 100%;
+  }
+  button.primary { background: var(--accent); color: var(--panel); border-color: var(--accent); }
+  button:disabled { opacity: 0.45; cursor: default; }
+
+  .photo-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    border-style: dashed; border-width: 1.5px; min-height: 52px;
+  }
+  .photo-preview-wrap { display: none; }
+  .photo-preview-wrap.show { display: block; }
+  .photo-preview-wrap img {
+    width: 100%; border-radius: 6px; border: 1px solid var(--border); display: block; margin-bottom: 8px;
+  }
+
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 3px;
+    border: 1.5px solid currentColor; font-size: 11.5px; font-weight: 800;
+    letter-spacing: 0.02em; white-space: nowrap;
+  }
+  .badge.Open { background: var(--warn-weak); color: var(--warn); }
+  .badge.InProgress { background: var(--accent-weak); color: var(--accent); }
+  .badge.Resolved { background: var(--ok-weak); color: var(--ok); }
+  .badge.Closed { background: transparent; color: var(--muted); }
+  .badge.NeedsResupplement { background: var(--danger-weak); color: var(--danger); }
+  .badge.Pending { background: var(--warn-weak); color: var(--warn); }
+  .badge.Pass { background: var(--ok-weak); color: var(--ok); }
+  .badge.Fail { background: var(--danger-weak); color: var(--danger); }
+
+  .section-title {
+    font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.14em;
+    color: var(--muted); margin: 0 0 10px;
+  }
+  .recent-item {
+    display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .recent-item:last-child { border-bottom: none; }
+  .recent-item img, .recent-item .noimg {
+    width: 52px; height: 52px; border-radius: 6px; object-fit: cover;
+    border: 1px solid var(--border); background: var(--bg); flex-shrink: 0;
+  }
+  .recent-item .info { flex: 1; min-width: 0; }
+  .recent-item .title { font-size: 13.5px; font-weight: 600; }
+  .recent-item .meta { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+  .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 12px 0; }
+
+  .toast {
+    position: fixed; bottom: max(24px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+    background: var(--panel); color: var(--text); border: 1px solid var(--border);
+    padding: 10px 18px; border-radius: 6px; font-weight: 600; font-size: 13px;
+    z-index: 100; box-shadow: var(--shadow); max-width: 90vw; text-align: center;
+  }
+
+  .recent-item img { cursor: pointer; }
+  .lightbox {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.88);
+    display: none; align-items: center; justify-content: center;
+    z-index: 200; padding: max(20px, env(safe-area-inset-top)) 20px;
+  }
+  .lightbox.show { display: flex; }
+  .lightbox img { max-width: 100%; max-height: 100%; border-radius: 6px; display: block; }
+  .lightbox-download {
+    position: fixed; top: max(16px, env(safe-area-inset-top)); right: 16px;
+    background: var(--panel); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 14px; font-size: 13px; font-weight: 600;
+    text-decoration: none; z-index: 201;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>現場回報</h1>
+  <div style="display:flex; align-items:center; gap:12px;">
+    <a href="index.html">辦公室後台</a>
+    <button id="themeToggle" class="theme-switch" role="switch" aria-checked="false" title="切換深色/淺色模式">
+      <span class="theme-switch-thumb"></span>
+    </button>
+  </div>
+</header>
+
+<input type="file" id="resupplementPhotoInput" accept="image/*" capture="environment" style="display:none" />
+
+<main>
+  <section class="panel">
+    <div class="field">
+      <label for="modeSelect">模式</label>
+      <select id="modeSelect">
+        <option value="issue">問題回報</option>
+        <option value="inspection">查驗</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="projectSelect">案場</label>
+      <select id="projectSelect">
+        <option value="">讀取中...</option>
+      </select>
+    </div>
+  </section>
+
+  <section class="panel" id="resupplementPanel" style="display:none; border-color: var(--danger);">
+    <div class="section-title" style="color: var(--danger);" id="resupplementTitle">⚠ 待補拍事項</div>
+    <div id="resupplementList"></div>
+  </section>
+
+  <section class="panel" id="issueFormPanel">
+    <div class="field">
+      <label for="locationInput">位置</label>
+      <input type="text" id="locationInput" list="locationDatalist" placeholder="例如: 3F 電梯機房 / C-12 柱" />
+      <datalist id="locationDatalist"></datalist>
+    </div>
+    <div class="field">
+      <label for="titleInput">問題說明</label>
+      <input type="text" id="titleInput" placeholder="例如: 樑柱位移、管線衝突" />
+    </div>
+    <div class="field">
+      <label for="descInput">補充說明(選填)</label>
+      <textarea id="descInput" placeholder="更詳細的描述"></textarea>
+    </div>
+    <div class="field">
+      <label>照片</label>
+      <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" />
+      <button type="button" id="photoBtn" class="photo-btn">📷 拍照</button>
+      <div class="photo-preview-wrap" id="photoPreviewWrap">
+        <img id="photoPreview" alt="拍攝預覽" />
+        <button type="button" id="retakeBtn" class="small">重新拍攝</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="reporterInput">回報人(選填)</label>
+      <input type="text" id="reporterInput" placeholder="姓名或公司名稱" />
+    </div>
+    <div class="field">
+      <button type="button" id="submitBtn" class="primary" disabled>送出回報</button>
+    </div>
+  </section>
+
+  <section class="panel" id="inspectionFormPanel" style="display:none">
+    <div class="field">
+      <label for="inspectionTypeSelect">查驗類型</label>
+      <select id="inspectionTypeSelect">
+        <option value="">讀取中...</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="inspectionItemInput">查驗項目</label>
+      <input type="text" id="inspectionItemInput" placeholder="例如: C35 混凝土進場、鋼筋綁紮" />
+    </div>
+    <div class="field">
+      <label for="inspectionLocationInput">位置</label>
+      <input type="text" id="inspectionLocationInput" list="inspectionLocationDatalist" placeholder="例如: 3F 電梯機房 / C-12 柱" />
+      <datalist id="inspectionLocationDatalist"></datalist>
+    </div>
+    <div class="field">
+      <label for="inspectionNoteInput">備註(選填)</label>
+      <textarea id="inspectionNoteInput" placeholder="更詳細的描述"></textarea>
+    </div>
+    <div class="field">
+      <label>照片</label>
+      <input type="file" id="inspectionPhotoInput" accept="image/*" capture="environment" style="display:none" />
+      <button type="button" id="inspectionPhotoBtn" class="photo-btn">📷 拍照</button>
+      <div class="photo-preview-wrap" id="inspectionPhotoPreviewWrap">
+        <img id="inspectionPhotoPreview" alt="拍攝預覽" />
+        <button type="button" id="inspectionRetakeBtn" class="small">重新拍攝</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="inspectionReporterInput">查驗人(選填)</label>
+      <input type="text" id="inspectionReporterInput" placeholder="姓名或公司名稱" />
+    </div>
+    <div class="field">
+      <button type="button" id="inspectionSubmitBtn" class="primary" disabled>送出查驗</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="section-title" id="recentTitle">最近回報</div>
+    <div id="recentList"><div class="empty">請先選擇案場</div></div>
+  </section>
+</main>
+
+<div id="toastRoot"></div>
+<div id="lightbox" class="lightbox">
+  <a id="lightboxDownload" class="lightbox-download" download="photo.jpg">下載照片</a>
+  <img id="lightboxImg" alt="放大照片" />
+</div>
+
+<script>
+const DEFAULT_BASE_URL = localStorage.getItem('asbuiltverify_baseUrl') || window.location.origin;
+const baseUrl = DEFAULT_BASE_URL;
+
+const ISSUE_STATUS_LABELS = { Open: '待處理', InProgress: '處理中', Resolved: '已解決', Closed: '已結案', NeedsResupplement: '需補拍' };
+const INSPECTION_STATUS_LABELS = { Pending: '待審核', Pass: '合格', Fail: '不合格', NeedsResupplement: '需補拍' };
+
+let currentMode = 'issue'; // 'issue' | 'inspection'
+let currentProjectId = '';
+let selectedPhotoFile = null;
+let selectedInspectionPhotoFile = null;
+let resupplementTargetId = null;
+const RESUPPLEMENT_COLLAPSED_COUNT = 2;
+const RECENT_COLLAPSED_COUNT = 3;
+let resupplementItems = [];
+let resupplementExpanded = false;
+let recentItems = [];
+let recentExpanded = false;
+
+function renderCollapsibleList(container, items, expanded, collapsedCount, onToggle, renderItem) {
+  if (items.length === 0) {
+    container.innerHTML = '<div class="empty">目前沒有資料</div>';
+    return;
+  }
+  const shown = expanded ? items : items.slice(0, collapsedCount);
+  let html = shown.map(renderItem).join('');
+  if (items.length > collapsedCount) {
+    html += `<button type="button" class="small toggle-btn" style="width:100%; margin-top:8px;">${expanded ? '收合 ▴' : `顯示全部 ${items.length} 筆 ▾`}</button>`;
+  }
+  container.innerHTML = html;
+  const toggleBtn = container.querySelector('.toggle-btn');
+  if (toggleBtn) toggleBtn.addEventListener('click', onToggle);
+}
+
+// ---- theme ----
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('themeToggle').setAttribute('aria-checked', String(theme === 'dark'));
+  localStorage.setItem('asbuiltverify_theme', theme);
+}
+applyTheme(localStorage.getItem('asbuiltverify_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+document.getElementById('themeToggle').addEventListener('click', () => {
+  applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+});
+
+function toast(msg) {
+  const root = document.getElementById('toastRoot');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  root.appendChild(el);
+  setTimeout(() => el.remove(), 2500);
+}
+
+function fmtDate(s) {
+  if (!s) return '';
+  const d = new Date(s.endsWith('Z') ? s : s + 'Z');
+  return d.toLocaleString('zh-TW', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+function photoUrl(issue) {
+  const v = encodeURIComponent(issue.updatedAt || issue.createdAt || '');
+  return `${baseUrl}/api/issues/${issue.id}/photo?v=${v}`;
+}
+
+function photoThumbUrl(issue) {
+  const v = encodeURIComponent(issue.updatedAt || issue.createdAt || '');
+  return `${baseUrl}/api/issues/${issue.id}/photo/thumbnail?v=${v}`;
+}
+
+function inspectionPhotoUrl(item) {
+  const v = encodeURIComponent(item.updatedAt || item.createdAt || '');
+  return `${baseUrl}/api/inspections/${item.id}/photo?v=${v}`;
+}
+
+function inspectionPhotoThumbUrl(item) {
+  const v = encodeURIComponent(item.updatedAt || item.createdAt || '');
+  return `${baseUrl}/api/inspections/${item.id}/photo/thumbnail?v=${v}`;
+}
+
+function currentEndpoint() {
+  return currentMode === 'issue' ? 'issues' : 'inspections';
+}
+function currentItemPhotoUrl(item) {
+  return currentMode === 'issue' ? photoUrl(item) : inspectionPhotoUrl(item);
+}
+function currentItemThumbUrl(item) {
+  return currentMode === 'issue' ? photoThumbUrl(item) : inspectionPhotoThumbUrl(item);
+}
+function currentStatusLabels() {
+  return currentMode === 'issue' ? ISSUE_STATUS_LABELS : INSPECTION_STATUS_LABELS;
+}
+function currentItemTitle(item) {
+  return currentMode === 'issue' ? item.title : `${item.inspectionType} - ${item.itemName}`;
+}
+
+function openLightbox(src) {
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightboxDownload').href = src;
+  document.getElementById('lightbox').classList.add('show');
+}
+document.getElementById('lightboxDownload').addEventListener('click', (e) => e.stopPropagation());
+document.getElementById('lightbox').addEventListener('click', () => {
+  document.getElementById('lightbox').classList.remove('show');
+  document.getElementById('lightboxImg').src = '';
+});
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function updateSubmitState() {
+  const ready = !!currentProjectId
+    && document.getElementById('locationInput').value.trim()
+    && document.getElementById('titleInput').value.trim()
+    && selectedPhotoFile;
+  document.getElementById('submitBtn').disabled = !ready;
+}
+
+// ---- project ----
+async function loadProjects() {
+  const select = document.getElementById('projectSelect');
+  try {
+    const res = await fetch(`${baseUrl}/api/projects`);
+    if (!res.ok) throw new Error(res.status);
+    const projects = await res.json();
+
+    if (projects.length === 0) {
+      select.innerHTML = '<option value="">尚無案場,請洽辦公室後台新增</option>';
+      return;
+    }
+    select.innerHTML = projects.map(p => `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`).join('');
+
+    const savedProject = localStorage.getItem('asbuiltverify_project') || '';
+    if (savedProject && projects.some(p => p.name === savedProject)) {
+      select.value = savedProject;
+    }
+    onProjectChange();
+  } catch (e) {
+    select.innerHTML = '<option value="">讀取失敗</option>';
+  }
+}
+
+function onProjectChange() {
+  currentProjectId = document.getElementById('projectSelect').value;
+  if (currentProjectId) localStorage.setItem('asbuiltverify_project', currentProjectId);
+  updateSubmitState();
+  updateInspectionSubmitState();
+  loadRecent();
+  loadResupplement();
+}
+
+document.getElementById('projectSelect').addEventListener('change', onProjectChange);
+
+// ---- mode ----
+function applyModeUI() {
+  const isIssue = currentMode === 'issue';
+  document.getElementById('issueFormPanel').style.display = isIssue ? '' : 'none';
+  document.getElementById('inspectionFormPanel').style.display = isIssue ? 'none' : '';
+  document.getElementById('recentTitle').textContent = isIssue ? '最近回報' : '最近查驗';
+  document.getElementById('resupplementTitle').textContent = isIssue ? '⚠ 待補拍事項' : '⚠ 待補查驗照片';
+}
+
+document.getElementById('modeSelect').addEventListener('change', () => {
+  currentMode = document.getElementById('modeSelect').value;
+  localStorage.setItem('asbuiltverify_mode', currentMode);
+  resupplementExpanded = false;
+  recentExpanded = false;
+  applyModeUI();
+  loadResupplement();
+  loadRecent();
+});
+
+// ---- resupplement ----
+async function loadResupplement() {
+  const panel = document.getElementById('resupplementPanel');
+  if (!currentProjectId) { panel.style.display = 'none'; return; }
+  try {
+    const res = await fetch(`${baseUrl}/api/${currentEndpoint()}?projectId=${encodeURIComponent(currentProjectId)}&status=NeedsResupplement`);
+    if (!res.ok) throw new Error(res.status);
+    resupplementItems = await res.json();
+    if (resupplementItems.length === 0) { panel.style.display = 'none'; return; }
+    panel.style.display = '';
+    renderResupplement();
+  } catch (e) {
+    panel.style.display = '';
+    document.getElementById('resupplementList').innerHTML = `<div class="empty">讀取失敗:${e}</div>`;
+  }
+}
+
+function renderResupplementItem(item) {
+  const photoSrc = currentItemPhotoUrl(item);
+  const thumb = item.photoStoredFileName
+    ? `<img src="${currentItemThumbUrl(item)}" alt="" onclick="openLightbox('${photoSrc}')" />`
+    : '<div class="noimg"></div>';
+  return `
+    <div class="recent-item">
+      ${thumb}
+      <div class="info">
+        <div class="title">${escapeHtml(currentItemTitle(item))}</div>
+        <div class="meta">${escapeHtml(item.resupplementNote || '')}</div>
+        <button type="button" class="small resupplement-btn" data-id="${item.id}" style="margin-top:8px; width:auto; padding:8px 12px;">📷 重新拍攝並上傳</button>
+      </div>
+    </div>`;
+}
+
+function renderResupplement() {
+  const listEl = document.getElementById('resupplementList');
+  renderCollapsibleList(listEl, resupplementItems, resupplementExpanded, RESUPPLEMENT_COLLAPSED_COUNT, () => {
+    resupplementExpanded = !resupplementExpanded;
+    renderResupplement();
+  }, renderResupplementItem);
+
+  listEl.querySelectorAll('.resupplement-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      resupplementTargetId = btn.dataset.id;
+      document.getElementById('resupplementPhotoInput').click();
+    });
+  });
+}
+
+document.getElementById('resupplementPhotoInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file || !resupplementTargetId) return;
+  const targetId = resupplementTargetId;
+  const endpoint = currentEndpoint();
+  const newStatus = currentMode === 'issue' ? 'Open' : 'Pending';
+  resupplementTargetId = null;
+
+  toast('上傳中...');
+  try {
+    const form = new FormData();
+    form.append('file', file, 'photo.jpg');
+    const photoRes = await fetch(`${baseUrl}/api/${endpoint}/${targetId}/photo`, { method: 'POST', body: form });
+    if (!photoRes.ok) throw new Error(await photoRes.text());
+
+    const statusRes = await fetch(`${baseUrl}/api/${endpoint}/${targetId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus })
+    });
+    if (!statusRes.ok) throw new Error(await statusRes.text());
+
+    toast('補拍成功,已重新送出審核');
+    loadResupplement();
+    loadRecent();
+  } catch (err) {
+    toast('補拍上傳失敗:' + err);
+  }
+});
+
+// ---- photo ----
+document.getElementById('photoBtn').addEventListener('click', () => document.getElementById('photoInput').click());
+document.getElementById('retakeBtn').addEventListener('click', () => document.getElementById('photoInput').click());
+
+document.getElementById('photoInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  selectedPhotoFile = file;
+  const url = URL.createObjectURL(file);
+  document.getElementById('photoPreview').src = url;
+  document.getElementById('photoPreviewWrap').classList.add('show');
+  document.getElementById('photoBtn').style.display = 'none';
+  updateSubmitState();
+});
+
+['locationInput', 'titleInput'].forEach(id => {
+  document.getElementById(id).addEventListener('input', updateSubmitState);
+});
+
+// ---- submit ----
+document.getElementById('submitBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = '送出中...';
+
+  const reporter = document.getElementById('reporterInput').value.trim();
+  if (reporter) localStorage.setItem('asbuiltverify_reporter', reporter);
+
+  try {
+    const res = await fetch(`${baseUrl}/api/issues`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        projectId: currentProjectId,
+        title: document.getElementById('titleInput').value.trim(),
+        description: document.getElementById('descInput').value.trim() || null,
+        location: document.getElementById('locationInput').value.trim() || null,
+        positionX: 0, positionY: 0, positionZ: 0,
+        createdBy: reporter || null
+      })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const issue = await res.json();
+
+    const form = new FormData();
+    form.append('file', selectedPhotoFile, 'photo.jpg');
+    const photoRes = await fetch(`${baseUrl}/api/issues/${issue.id}/photo`, { method: 'POST', body: form });
+    if (!photoRes.ok) throw new Error(await photoRes.text());
+
+    toast('已送出回報');
+    resetForm();
+    loadRecent();
+  } catch (e) {
+    toast('送出失敗:' + e);
+  } finally {
+    btn.textContent = '送出回報';
+    updateSubmitState();
+  }
+});
+
+function resetForm() {
+  document.getElementById('locationInput').value = '';
+  document.getElementById('titleInput').value = '';
+  document.getElementById('descInput').value = '';
+  document.getElementById('photoInput').value = '';
+  selectedPhotoFile = null;
+  document.getElementById('photoPreviewWrap').classList.remove('show');
+  document.getElementById('photoBtn').style.display = '';
+  updateSubmitState();
+}
+
+// ---- inspection types ----
+async function loadInspectionTypes() {
+  const select = document.getElementById('inspectionTypeSelect');
+  try {
+    const res = await fetch(`${baseUrl}/api/inspection-types`);
+    if (!res.ok) throw new Error(res.status);
+    const types = await res.json();
+    if (types.length === 0) {
+      select.innerHTML = '<option value="">尚無查驗類型,請洽辦公室後台新增</option>';
+      return;
+    }
+    select.innerHTML = types.map(t => `<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('');
+  } catch (e) {
+    select.innerHTML = '<option value="">讀取失敗</option>';
+  }
+}
+
+// ---- inspection photo ----
+document.getElementById('inspectionPhotoBtn').addEventListener('click', () => document.getElementById('inspectionPhotoInput').click());
+document.getElementById('inspectionRetakeBtn').addEventListener('click', () => document.getElementById('inspectionPhotoInput').click());
+
+document.getElementById('inspectionPhotoInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  selectedInspectionPhotoFile = file;
+  const url = URL.createObjectURL(file);
+  document.getElementById('inspectionPhotoPreview').src = url;
+  document.getElementById('inspectionPhotoPreviewWrap').classList.add('show');
+  document.getElementById('inspectionPhotoBtn').style.display = 'none';
+  updateInspectionSubmitState();
+});
+
+['inspectionItemInput', 'inspectionTypeSelect'].forEach(id => {
+  document.getElementById(id).addEventListener('input', updateInspectionSubmitState);
+  document.getElementById(id).addEventListener('change', updateInspectionSubmitState);
+});
+
+function updateInspectionSubmitState() {
+  const ready = !!currentProjectId
+    && document.getElementById('inspectionTypeSelect').value
+    && document.getElementById('inspectionItemInput').value.trim()
+    && selectedInspectionPhotoFile;
+  document.getElementById('inspectionSubmitBtn').disabled = !ready;
+}
+
+// ---- inspection submit ----
+document.getElementById('inspectionSubmitBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('inspectionSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = '送出中...';
+
+  const reporter = document.getElementById('inspectionReporterInput').value.trim();
+  if (reporter) localStorage.setItem('asbuiltverify_reporter', reporter);
+
+  try {
+    const res = await fetch(`${baseUrl}/api/inspections`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        projectId: currentProjectId,
+        inspectionType: document.getElementById('inspectionTypeSelect').value,
+        itemName: document.getElementById('inspectionItemInput').value.trim(),
+        location: document.getElementById('inspectionLocationInput').value.trim() || null,
+        note: document.getElementById('inspectionNoteInput').value.trim() || null,
+        createdBy: reporter || null
+      })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const inspection = await res.json();
+
+    const form = new FormData();
+    form.append('file', selectedInspectionPhotoFile, 'photo.jpg');
+    const photoRes = await fetch(`${baseUrl}/api/inspections/${inspection.id}/photo`, { method: 'POST', body: form });
+    if (!photoRes.ok) throw new Error(await photoRes.text());
+
+    toast('已送出查驗');
+    resetInspectionForm();
+    loadRecent();
+  } catch (e) {
+    toast('送出失敗:' + e);
+  } finally {
+    btn.textContent = '送出查驗';
+    updateInspectionSubmitState();
+  }
+});
+
+function resetInspectionForm() {
+  document.getElementById('inspectionItemInput').value = '';
+  document.getElementById('inspectionLocationInput').value = '';
+  document.getElementById('inspectionNoteInput').value = '';
+  document.getElementById('inspectionPhotoInput').value = '';
+  selectedInspectionPhotoFile = null;
+  document.getElementById('inspectionPhotoPreviewWrap').classList.remove('show');
+  document.getElementById('inspectionPhotoBtn').style.display = '';
+  updateInspectionSubmitState();
+}
+
+// ---- recent list ----
+async function loadRecent() {
+  const listEl = document.getElementById('recentList');
+  if (!currentProjectId) {
+    listEl.innerHTML = '<div class="empty">請先選擇案場</div>';
+    return;
+  }
+  try {
+    const res = await fetch(`${baseUrl}/api/${currentEndpoint()}?projectId=${encodeURIComponent(currentProjectId)}`);
+    if (!res.ok) throw new Error(res.status);
+    recentItems = await res.json();
+    renderRecent();
+    updateLocationDatalist();
+  } catch (e) {
+    listEl.innerHTML = `<div class="empty">讀取失敗:${e}</div>`;
+  }
+}
+
+function updateLocationDatalist() {
+  const locations = [...new Set(recentItems.map(i => i.location).filter(Boolean))].sort();
+  const datalistId = currentMode === 'issue' ? 'locationDatalist' : 'inspectionLocationDatalist';
+  document.getElementById(datalistId).innerHTML =
+    locations.map(loc => `<option value="${escapeHtml(loc)}"></option>`).join('');
+}
+
+function renderRecentItem(item) {
+  const photoSrc = currentItemPhotoUrl(item);
+  const thumb = item.photoStoredFileName
+    ? `<img src="${currentItemThumbUrl(item)}" alt="" onclick="openLightbox('${photoSrc}')" />`
+    : '<div class="noimg"></div>';
+  const loc = item.location ? escapeHtml(item.location) + ' ・ ' : '';
+  const labels = currentStatusLabels();
+  return `
+    <div class="recent-item">
+      ${thumb}
+      <div class="info">
+        <div class="title">${escapeHtml(currentItemTitle(item))}</div>
+        <div class="meta">${loc}<span class="mono">${fmtDate(item.createdAt)}</span></div>
+        <div class="meta"><span class="badge ${item.status}">${labels[item.status] || item.status}</span></div>
+      </div>
+    </div>`;
+}
+
+function renderRecent() {
+  const listEl = document.getElementById('recentList');
+  if (recentItems.length === 0) {
+    listEl.innerHTML = '<div class="empty">目前沒有回報紀錄</div>';
+    return;
+  }
+  renderCollapsibleList(listEl, recentItems, recentExpanded, RECENT_COLLAPSED_COUNT, () => {
+    recentExpanded = !recentExpanded;
+    renderRecent();
+  }, renderRecentItem);
+}
+
+// ---- init ----
+document.getElementById('reporterInput').value = localStorage.getItem('asbuiltverify_reporter') || '';
+document.getElementById('inspectionReporterInput').value = localStorage.getItem('asbuiltverify_reporter') || '';
+currentMode = localStorage.getItem('asbuiltverify_mode') || 'issue';
+document.getElementById('modeSelect').value = currentMode;
+applyModeUI();
+loadProjects();
+loadInspectionTypes();
+setInterval(() => { if (currentProjectId) { loadRecent(); loadResupplement(); } }, 5000);
+</script>
+
+</body>
+</html>
